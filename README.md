@@ -1,4 +1,4 @@
-# Parallax-Wi-Fi-Apps
+# Parallax Wi-Fi Module Applications
 Customer applications for the Parallax Wi-Fi Module (#32420)
 
 ## Purpose
