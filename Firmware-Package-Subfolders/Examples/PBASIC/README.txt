@@ -1,1 +1,1 @@
-PBASIC Examples that either have or are scheduled for use with learn.parallax.com pages go here.
+PBASIC examples that either accompany (or will accompany) learn.parallax.com pages go here.

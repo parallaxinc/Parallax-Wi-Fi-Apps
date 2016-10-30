@@ -1,1 +1,1 @@
-Propeller C Examples that either have or are scheduled for use with learn.parallax.com pages go here.
+Propeller C examples that either accompany (or will accompany) learn.parallax.com pages go here.
