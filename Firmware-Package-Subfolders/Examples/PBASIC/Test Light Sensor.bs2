@@ -11,9 +11,9 @@ time VAR Word                                ' Variable for storing decay time
 
 DO                                           ' Main loop
 
-  HIGH 3                                     ' Set P3 high
+  HIGH 5                                     ' Set P3 high
   PAUSE 1                                    ' Wait for 1 ms
-  RCTIME 3, 1, time                          ' Measure voltage decay time
+  RCTIME 5, 1, time                          ' Measure voltage decay time
   DEBUG HOME, "time = ", DEC4 time           ' Display decay time
   PAUSE 500                                  ' Wait half a second
 
