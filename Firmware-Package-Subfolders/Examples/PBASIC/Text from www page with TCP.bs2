@@ -1,0 +1,102 @@
+' Text from WWW page with TCP.bs2
+
+' This program establishes a TCP conneciton with a server and retrieves
+' the contents of a web page.
+'
+' Setup:
+'   - Go to http://learn.parallax.com/pbasic-wx-wi-fi.html.
+'   - If you have not already done so, find the Get Started with PBASIC
+'     section in the Wi-Fi Module + BS2 Guide and follow its instructions.
+'     Continue through Test Connection Between Page and BS2.
+'   - Follow the instructions in Join Another Wi-Fi Network.
+'   - Find this activity: Read a WWW page with TCP.
+'   - Follow its instructions for testing the application.
+'
+' {$STAMP BS2}                               ' Target = BASIC Stamp 2
+' {$PBASIC 2.5}                              ' Language = PBASIC 2.5
+
+Baud           CON     188                   ' 4800 BPS baud rate
+ToDI           CON     2                     ' BS2 P11 -> Wi-Fi DI
+FromDO         CON     4                     ' BS2 P10 <- Wi-Fi DO
+msTimeout      CON     1000                  ' Serial ms timeout limit
+
+CMD            CON     $FE
+
+val            VAR     Word                  ' Value for sending to page
+ctr            VAR     Word
+temp           VAR     Byte(8)
+status         VAR     Byte
+handle         VAR     Nib
+id             VAR     Nib
+
+Restart_Point:                               ' Beginning of program
+PAUSE 1000                                   ' Wait for certain OS COM ports
+DEBUG "Starting...", CR                      ' Display starting message
+GOSUB Break                                  ' Break condition to Wi-Fi module
+
+Break:                                       ' Break condition WiFi -> CMD mode
+  HIGH ToDI : PAUSE 10
+  LOW ToDI  : PAUSE 10
+  HIGH ToDI : PAUSE 1
+  'RETURN
+
+' Connect to server
+DEBUG "CONNECT", CR
+SEROUT ToDI, Baud, [CMD, "CONNECT:www-eng-x.llnl.gov,80", CR]
+SERIN FromDO, Baud, msTimeout, TimeoutA,
+      [WAIT(CMD, "="), status, DEC handle]
+DEBUG "status:", status, " handle:", DEC handle, CR, CR
+
+' Send GET request for page.
+DEBUG "Send GET request", CR
+SEROUT ToDI, Baud, [CMD, "SEND:", DEC handle, ",68", CR]
+SEROUT ToDI, Baud, ["GET /documents/a_document.txt HTTP/1.1",
+                         CR, LF,
+                         "Host: www-eng-x.llnl.gov",
+                         CR, LF, CR, LF]
+SERIN FromDO, Baud, 15000, TimeoutA,[WAIT(CMD, "="), status, DEC val]
+DEBUG "Status: ", status, CR, CR
+IF status = "E" THEN DEBUG "Error code: ", DEC val, CR, CR
+
+' Receive and display 7 characters at a time.
+DO
+  HIGH 5
+  SEROUT ToDI, Baud, [CMD, "RECV:", DEC handle, ",7", CR]
+  SERIN FromDO, Baud, 1500, TimeoutB, [WAIT(CMD, "="), DEC val]
+  IF val > 0 THEN
+    SERIN FromDO, Baud, 1500, TimeoutB, [STR temp\val]
+    LOW 5
+    TimeoutB:
+    FOR ctr = 0 TO val
+      IF temp(ctr) >= " " AND temp(ctr) <= "z" THEN
+        DEBUG temp(ctr)
+      ELSEIF temp(ctr) = LF THEN
+        'DEBUG "[LF]", CR
+        DEBUG LF
+      ELSEIF temp(ctr) = CR THEN
+        'DEBUG "[CR]", CR
+        DEBUG CR
+      ELSEIF temp(ctr) = 0 THEN
+        EXIT
+        DEBUG "[0]", CR
+      ELSE
+        DEBUG "[", DEC temp(ctr), "]"
+      ENDIF
+    NEXT
+  ELSE
+    PAUSE 100
+  ENDIF
+LOOP WHILE val > 0
+
+' Close the connection.
+DEBUG "Close connection.", CR
+SEROUT ToDI, Baud, [CMD, "CLOSE:", DEC handle, CR]
+SERIN FromDO, Baud, [WAIT(CMD, "="), status, DEC handle]
+DEBUG "Status: ", status, CR
+IF status = "E" THEN DEBUG "Error code: ", DEC val, CR
+END
+
+' Notify that a timeout occurred.
+TimeoutA:
+DEBUG "A timeout occurred.", CR
+END

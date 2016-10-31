@@ -1,0 +1,20 @@
+' Test Light Sensor.bs2
+
+' This program tests your light sensor.  For lots more information on how
+' it works, find the PDF download of What's a Microcontroller at
+' www.parallax.com, and read Chapter 7.
+
+' {$STAMP BS2}                               ' Target = BASIC Stamp 2
+' {$PBASIC 2.5}                              ' Language = PBASIC 2.5
+
+time VAR Word                                ' Variable for storing decay time
+
+DO                                           ' Main loop
+
+  HIGH 3                                     ' Set P3 high
+  PAUSE 1                                    ' Wait for 1 ms
+  RCTIME 3, 1, time                          ' Measure voltage decay time
+  DEBUG HOME, "time = ", DEC4 time           ' Display decay time
+  PAUSE 500                                  ' Wait half a second
+
+LOOP                                         ' Repeat main loop

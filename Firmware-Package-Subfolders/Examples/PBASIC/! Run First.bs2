@@ -1,0 +1,6 @@
+' ! Run First.BS2
+
+' {$STAMP BS2}
+' {$PBASIC 2.5}
+
+END

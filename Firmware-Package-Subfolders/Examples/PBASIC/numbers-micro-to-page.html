@@ -1,0 +1,36 @@
+<html>
+
+  <!-- Start of section to delete -->
+    <b>Setup:</b><br>
+    &nbsp &nbsp &#9989 &nbsp Upload this page to your Wi-Fi module.<br>
+    &nbsp &nbsp &#9989 &nbsp Open this page from http://your-wi-fi-module's-ip/files/numbers-micro-to-page.html.<br>
+    &nbsp &nbsp &#9989 &nbsp Run "Numbers Micro to Page Host.bs2" with your BASIC Stamp 2 module. <br>
+    &nbsp &nbsp &#x1F56E &nbsp More info at http://learn.parallax.com/pbasic-wx-wi-fi.html.  
+    <br><br>
+  <!-- End of section to delete -->
+
+Click Enter to see number from Micro: <br> 
+<button onclick="receiveFromMCU()">Enter</button>
+<p id="value">Waiting...</p>
+
+<script>
+function receiveFromMCU()
+{
+  var req = new XMLHttpRequest();
+  req.open("GET", "/tpfm", true);
+  req.onreadystatechange = function () 
+  {
+    if (req.readyState == 4) 
+    {
+      var val = document.getElementById("value");
+      if (req.status == 200)
+        val.innerHTML = "Value: " + req.responseText;
+      else
+        value.innerHTML = "Nothing received.";
+    }
+  }
+  req.send();
+}
+</script>
+
+</html>

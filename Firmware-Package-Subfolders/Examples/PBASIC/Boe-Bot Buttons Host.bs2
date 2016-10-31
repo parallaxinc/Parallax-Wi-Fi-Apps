@@ -1,0 +1,769 @@
+' Boe-Bot Btns Ir Speed Host.bs2
+
+' This program exchanges information with the boe-bot-btns-ir-speed.html
+' page through HTTP POST and GET requests.  The page transmits information
+' about which navigation button was clicked as HTTP POSTs.  This program uses
+' them to make the Boe-Bot Robot execute maneuvers. The page also sends POST
+' requests about slider values that this program uses to control the Boe-Bot
+' robot's speed.  This program also replies to GET reuqests with infrared
+' obstacle detection information, which the page displays graphically as walls
+' blocking the left and/or right side of a road.
+
+' Setup:
+'   - Go to http://learn.parallax.com/pbasic-wx-wi-fi.html.
+'   - If you have not already done so, find the Get Started with PBASIC
+'     section in the Wi-Fi Module + BS2 Guide and follow its instructions.
+'     Continue through Test Connection Between Page and BS2.
+'   - Find this activity: Page Controls and Monitors Boe-Bot Robot with HTTP.
+'   - Follow its instructions for building and adjusting the Boe-Bot circuits,
+'     uploading and accessing ws-boe-bot-btns-ir-speed.html, running this
+'     code, and testing the applicaion.
+'   - Have fun remotely monitoring and controlling your Boe-Bot robot over
+'     Wi-Fi!
+'   - For a more responsive version of this program, try the Page Controls
+'   - and Monitors Boe-Bot Robot with WebSockets activity.
+
+' {$STAMP BS2}                               ' Target = BASIC Stamp 2
+' {$PBASIC 2.5}                              ' Language = PBASIC 2.5
+
+' Select which features to support.
+#DEFINE POSTS        =  1                    ' HTTP POST requests
+#DEFINE GETS         =  1                    ' HTTP GET requests
+#DEFINE WEBSOCKETS   =  0                    ' WebSockets
+#DEFINE PATHS        =  0                    ' Path text comparisons
+#DEFINE DEBUGS       =  0                    ' Debug Terminal Info
+
+' I/O pin connections.
+ToDI           CON     2                     ' BS2 P2 -> Wi-Fi DI
+FromDO         CON     4                     ' BS2 P4 <- Wi-Fi DO
+Baud           CON     188                   ' 4800 BPS baud rate
+
+' Listener setup for POSTs from direction
+' button clicks & .
+ListenNav       DATA   CMD, LISTEN, HTTP     ' Listener setup command
+NavPath         DATA   "/bot", CR            ' Listener setup path
+NavKey          DATA   "go", CR              ' HTTP Post key (name)
+navId           VAR    Nib                   ' Listener variables
+navChar         VAR    Byte
+
+' Continuous rotation servo speed control
+' variables.
+speedLeft       VAR    Word                  ' Left/right speed values
+speedRight      VAR    Word
+
+' Initialize Wi-Fi module
+Restart_Point:
+FREQOUT 3, 2000, 3000                        ' Speaker start beep
+DEBUG "Running...", CR                       ' "Running" message
+GOSUB Break                                  ' Wi-Fi module -> command mode
+
+eeAddr = ListenNav                           ' Navigation buttons listener
+GOSUB Listen_Setup
+navId = id
+
+' Main program loop
+DO                                           ' Main loop repeats here
+
+  GOSUB Poll_Events                          ' Check for POSTs & GETs
+
+  ' Handle POST or GET requests
+  IF op = "P" THEN                           ' If it's a post
+    eeAddr = NavKey                          ' Ask for "go" name's value
+    GOSUB Post_Request_Start                 ' Ask for the POST body value
+    SERIN FromDO, 188, 10, Timeout,          ' Receive the value
+          [WAIT(CMD, "="), status,
+          SKIP 1, navChar]
+    GOSUB Post_Request_Ack                   ' Acknowledge the post
+    DEBUG "navChar = ", navChar, CR          ' Display the value
+  ELSEIF op = "N" THEN
+    'DEBUG CR
+    'PAUSE 250
+  ENDIF
+
+  ' Set up motor speeds/directions
+  SELECT navChar                             ' Match navChar to options
+    CASE "F"
+      speedLeft = 100
+      speedRight = 100
+    CASE "B"
+      speedLeft = -100
+      speedRight = -100
+    CASE "L"
+      speedLeft = -100
+      speedRight = 100
+    CASE "R"
+      speedLeft = 100
+      speedRight = -100
+    CASE "S"
+      speedLeft = 0
+      speedRight = 0
+  ENDSELECT
+
+  PULSOUT 15, 750 + speedLeft                ' Control pulses to servos
+  PULSOUT 13, 750 - speedRight
+
+LOOP                                         ' Repeat main loop
+
+
+' ========[ Your code above ]===============================================
+
+' ========[ Wi-Fi support below ]===========================================
+'
+' Wi-Fi module support code is below this comments section.  To see
+' variable and constant names that are declared with the support code,
+' scroll down to the ' Wi-Fi Module... sections below this comments section.
+'
+' More info about the tokens and commands is available through the Parallax
+' Wi-Fi Module API, which is available through the Downloads & Documentation
+' section on the Wi-Fi module product pages at www.parallax.com -> Search for
+' 32420.
+'
+' We welcome community input and edits that improve the code.  Please post
+' suggestions to github.com/parallaxinc/Parallax-Wi-Fi-Apps.
+'
+'
+' HOW TO USE THE WI-FI MODULE SUBROUTINES AND CONSTANTS
+' =====================================================
+'
+' STEP 1: Add support subroutines and variables for certain Wi-Fi module
+'         features.
+'
+'         If you set the value of one of the #DEFINE terms to 1, it adds the
+'         variables and subroutines to your program that support that feature.
+'         The #DEFINE options are:
+'
+'           o POSTS       for processing HTTP POST requests
+'           o GETS        for processing HTTP GET requests
+'           o WEBSOCKETS  for creating WebSocket connections
+'           o PATHS       for checking multiple path options from a common
+'                         connection ID
+'           o DEBUGS      for displaying status info at each step of each
+'                         BS2 <-> Wi-Fi Module interaction
+'
+'         It's best to only select options for the features you plan to use in
+'         your application because each one increases the program size, which
+'         reduces the code space in for your PBASIC code.
+'
+' STEP 2: Make DATA directives with command strings that set up event
+'         listeners and declare variables to store the listener IDs.  The
+'         Wi-Fi module supports up to 4 listeners.
+'
+'         ListenerLabel  DATA CMD, LISTEN, HTTP ' Or WS
+'         ListenerPath   DATA "/path", CR       ' Can end in * for use with PATHS
+'         ListenerKey    DATA "name", CR        ' To remove "name=" from POST bodies
+'         ListenerID     var  Nib               ' Stores listener ID
+'         ListenerHandle var Nib                ' Only for WebSockets
+'
+'         CMD, LISTEN, HTTP and many other constants are declared below.
+'         Search below this comments section for: ' Wi-Fi Module
+'
+' STEP 3: Send the Wi-Fi module a break condition to switch its mode from
+'         Transparent to Command.
+'
+'         GOSUB Break
+'
+' SETP 4: Set up a listener.  For this, you will use two variables reserved by
+'         the Wi-Fi module support code: eeAddr and id.  First, set the eeAddr
+'         variable to ListenerLabel, then call Listen_Setup.  After that, copy
+'         the value Listen_Setup stores in the id variable to the ListenerId
+'         variable you created.
+'
+'         Example:
+'           eeAddr = ListenerLabel
+'           GOSUB Listen_Setup
+'           listenerId = id
+'
+' STEP 5: For WebSockets only:
+'           Set wsWaitId to listenerId.
+'           Call Wait_WebSocket_Connect
+'           Copy the value from handle to a variable that stores the
+'             WebSocket handle.
+'           Example:
+'             wsWaitId = listenerId
+'             GOSUB Wait_WebSocket_Connect
+'             wsHandle = handle
+'
+' STEP 6: Loop and repeatedly call Poll_Events and check the op variable.
+'         Poll events will set the op variable to "P", "G", "D", or "N"
+'         for POST or GET request, incoming WebSocket DATA, or NOTHING in the
+'         queue.  For POST and GET requests and DATA, it also stores the
+'         listener ID in the id variable, and a value to access the event in
+'         a variable named handle.
+'
+'         If the op variable is "P", it means there's a POST request waiting.
+'           The Poll_Events subroutine will set the id variable to the
+'             Listener ID that this request is coming from.  If this POST could
+'             come from different listeners, use IF statements to figure out
+'             which listenerId variable matches the id variable.
+'           Poll_Events will store the POST request handle in a variable named
+'             handle, which will be ready for the Post_Request_Start subroutine.
+'           Keep in mind, the html page this code interacts with will send a
+'           name=value pair.  Your code can set eeAddr = ListenerKey to filter
+'           out the name you are expecting, and just reply with the value.
+'           Capture the value with a SERIN command, typically of the form:
+'             SERIN FromDO, Baud, Timeoutms, TimeoutLabel,
+'                   [WAIT(CMD, "="), status, SKIP 1, Expression]
+'             Note: Expression can be a combination of variables and formatters:
+'                   STR yourStrArray
+'                   or DEC yourNumberVal
+'                   or yourCharacterVal
+'                   or a combination of these
+'                   Essentially, your expression will have to be set up to capture
+'                   the information sent by the page's JavaScript.
+'           After the SERIN command has received the information, call the
+'             Post_Request_Ack subroutine to complete the exchange.
+'
+'         If the op variable is "G", it means there's a GET request waiting.
+'           The Poll_Events subroutine will set the id variable to the
+'             Listener ID that this request is coming from. If this GET request
+'             could come from different listeners, use IF statements to figure
+'             out which listenerId variable the id variable matches.
+'           Poll_Events will store the GET request handle in a variable named
+'             handle, which will be ready for the Get_Request_Start subroutine.
+'           Set the charCount variable to the number of characters in the reply.
+'           Call the Get_Request_Start subroutine.
+'           Send the reply with a SEROUT command, typically of the form:
+'             SEROUT FromDO, Baud, [Expression]
+'             Note: Expression can take many forms, for example
+'                   STR yourStrArray      ' Most have as many characters as charCount
+'                   DEC3 yourNumberVal    ' Assuming you set charCount to 3
+'                   or, assuming your JavaScript is ready to receive charChout + 3
+'                   STR yourStrArray, DEC3 yourNumberVal
+'           After SEROUT command has transmitted the information, call the
+'           Get_Request_Ack subroutine to complete the exchange.
+'
+'         If the op variable is "D", it means there's WebSocket data from a
+'           page that's ready for the BS2 to receive. The Poll_Events
+'           subroutine will set the handle to the WebSocket handle that is
+'           sending the data and the wsCharCount variable to the number of
+'           characters in the data.  If there is more than one WebSocket
+'           handle, verify that you can use the handle to match which
+'           websocket is sending the data.
+'
+'             SEROUT ToDI, Baud, [CMD, RECV, DEC wsHandle,
+'                                 "," DEC maxChars, CR]
+'             SERIN FromDO, Baud, timeout, [WAIT(CMD, "="), status,
+'                                           SKIP(1), DEC handle, SKIP(1),
+'                                           Expression]
+'
+'             Note: Expression consists of the variables and/or formatters that
+'               can capture what the JavaScipt is sending.  For example, if
+'               it is programmed to transmit a byte followed by two 3-digit
+'               integer values, then, Expression might actually be something
+'               like this:
+'
+'                 yourByteVariable, DEC3 valueAvariable, DEC3 valueBvariable.
+'
+'               If the data is a 4-character string, then it might be:
+'
+'                 arrayVariable\4
+'
+'         Your application can also SEND data to the page using the same
+'         WebSocket connection handle.  The typical form is:
+'
+'           charCount = NumberOfCharactersToSend
+'           SEROUT ToDI, Baud, [CMD, SND, DEC wsHandle, ",", charCount, CR,
+'                               Expression]
+'
+'         ...where Expression contains charCount characters and s
+'         formatted to be received by the page's JavaScript.
+'
+'
+' SUBROUTINE DOCUMENTATION
+' =====================================================
+
+' Break
+'   Sends a break condition to the Parallax Wi-Fi Module to switch it from
+'   transparent mode to command mode.  Transparent mode is for programming
+'   microcontrollers and sending/receiving to/from the terminal.  See the
+'   Wi-Fi module product page at www.parallax.com for information on which
+'   microcontroller programming environments are currently compatible with
+'   the Wi-Fi module in transparent mode.
+
+' Listen_Setup
+'   Sets up an event listener.
+'   Depends on a DATA Directive.
+'     ' Protocol can be HTTP, WS, or TCP.
+'     ' string is CR terminated 2nd DATA directive.
+'     ListenerLabel DATA CMD, LISTEN, Protocol
+'     ListenerPath DATA "/path", CR
+'     listenerId VAR Nib
+'   Parameters:
+'     eeAddr must be set to the name of a DATA directive with a string
+'     for setting up the listener.
+'   Returns: status, id.  If the operation completed successfully, status is
+'     set to "S", and id is set to the listener ID.  If there is an error,
+'     status will store "E", and id will store the error code.
+'   Example:
+'     eeAddr = ListenerLabel
+'     GOSUB Listen_Setup
+'     listenerId = id
+
+' Wait_WebSocket_Connect
+'   Wait for a websocket connection handle from a websocket ID that has been
+'     established through a call to the Listen_Setup subroutine.  The connection
+'     will be established by some event on the web page, such as clicking a
+'     connect button or refreshing the page.
+'   Parameters: wsWaitId
+'     The wsWaitId should be set to the ID value that was returned by
+'       Listen_Setup.
+'   Returns: handle
+'     This handle is the value your code will have to use with SEND and
+'     RECV interactions, so copy it into a variable.
+'   Example:
+'     ListenWs        DATA   CMD, LISTEN, WS      ' String to set up listener
+'     WsPath          DATA   "/ws/a", CR
+'     wsId            VAR     Nib                 ' ID for message listener
+'     wsHandle        VAR     Nib                 ' WebSocket event handle
+'     eeAddr = ListenWs                           ' Get ready for Listen_Setup
+'     GOSUB Listen_Setup                          ' Call Listen_Setup
+'     wsId = id                                   ' Store connection ID
+'     wsWaitId = wsId                             ' Wait_WaitWebSo... prep
+'     GOSUB Wait_WebSocket_Connect                ' Wait_WaitWebSo... call
+'     wsHandle = handle                           ' Store WebSocket handle
+
+' Poll_Events
+'   Returns: op, handle, id.  Possible replies depend on the listener(s) that
+'   have been set up:
+'     op = "P" or "G":
+'       A POST or GET request is waiting.  The id variable will store the
+'       listener ID, and the handle variable will store the event's handle.
+'       The Post_Request_Start and Get_Request_Start subroutines use this
+'       variable to initiate retrieval of the request.
+'     op = "D"
+'       WebSocket DATA has been received.  Respond with:
+'         charCount = someMaxValue
+'         SEROUT ToDI, Baud, [CMD, RECV, DEC wsHandle, "," DEC charCount, CR]
+'         SERIN FromDO, Baud, msTimeout, Timeout, [WAIT(CMD, "="),
+'          status, SKIP(1), DEC id, SKIP(1), Expression]
+'       Notes:
+'         (1) Set charCount to max number of characters the PBASIC code
+'             can receive.
+'         (2) The Expression would be designed to receive the data in the
+'             format that the JavaScript sends it.  For example, if a single
+'             character is followed by a 3-digit integer value, Expression
+'             might be something like: navChar, DEC3 val
+'     op = "S"
+'       A REPLY or SEND operation completed successfully.
+'       Returns: The handle variable will store the connection identifier for
+'         the REPLY or SEND that completed.
+'     op = "X"
+'       A connection handle was disconnected
+'       Returns: handle with the connection identifier, and id variable
+'         with the code.  See Wi-Fi Module Network Code constants below.
+'     op = "N"
+'       No listener activity to report.  The handle and id variables will be
+'       set to zero.
+
+' Check_Path...Path_Compare
+' Check_Path
+'   If the #DEFINE PATHS has been set to 1, and if the listener path was set
+'     up with an asterisk * as the last character, and if the page expects the
+'     host to reply differently depending on the path it supplies with its
+'     request, Check_Path loads the request's path into an array that can
+'     then be compared with the Path_Compare subroutine.
+'   Parameter: handle
+'     Poll_Events will have set the handle to the current event.
+'   Returns: uriPath
+'     The uriPath contains PathCharCount characters with a default of 6.
+' Path_Compare
+'   Used after Check_Path to compare a request's path against one or more
+'     paths in DATA directives.
+'   Parameters: eeAddr, uriPath
+'     Set eeAddr to the DATA directive's label that will be compared against
+'     uriPath.  uriPath should have been set with a call to Check_Path
+'   Returns: match
+'     If uriPath matches the data at eeAddr, match will be 1.  If not, match
+'     will be 0.
+'   Example:
+'     #DEFINE PATHS = 1
+'     AbPlusCdPath DATA "/abcd", CR     ' Listener was set up with "/ab*"
+'     ...
+'     eeAddr = AbPlusCdPath
+'     GOSUB Check_Path
+'     GOSUB Path_Compare
+'     IF match = 1 THEN...ELSE...ENDIF
+
+' Post_Request_Start...SERIN...Post_Request_Ack
+'   Handle a POST request from a page, get the data, and send an
+'     acknowledgement.  The post body will contain a name=value pair.
+'     The name= part will be filtered by setting eeAddr to the label of a DATA
+'     directive with the name text followed by a CR.
+'   Parameters: handle, eeAddr.
+'     The Poll_Events subroutine will have already set the handle variable to
+'     the current event identifier.  The eeAddr variable should be set to the
+'     label of a DATA directive with the key/name expected in the post body.
+'     (Check the page's JavaScript code for what name=value to expect.)
+'   Example:
+'     NameKey DATA "key", CR
+'     ' ... Code where Poll_Events has returned "P", an id and a handle.
+'     eeAddr = NameKey
+'     GOSUB Post_Request_Start
+'     SERIN FromDO, Baud, 10, Timeout, [WAIT(CMD, "="),
+'                                       status, SKIP 1,
+'                                       Expression]
+'     GOSUB Post_Request_Ack
+'     ' Note, expression has to capture the value part of the name=value
+'     ' pair.  For example, if it's going to be something like led6state1
+'     ' Expression might just use DEC ledNumber, DEC ledState.  If it's
+'     ' going to be a string of four characters, Expression might be
+'     ' STR myArray\4.
+
+' Get_Request_Start...SEROUT...Get_Request_Ack
+'   Handle a GET request from a page, supply the data, and reply
+'      with an acknowledgement.
+'   Parameters: handle, charCount.
+'     Set charCount equal to the number of characters in the SEROUT reply.
+'     The value of the handle variable will already be set by Poll_Events.
+'   Example:
+'     CharCount = 4
+'     GOSUB GET_Request_Start
+'     SEROUT ToDi, Baud, [DEC4 value]
+'     GOSUB Get_Request_Ack
+
+PathCharCount          CON     6
+msTimeout              CON     1000
+
+' Wi-Fi Module Command tokens
+
+CMD                    CON     $FE
+JOIN                   CON     $EF
+CHECK                  CON     $EE
+SET                    CON     $ED
+POLL                   CON     $EC
+PATH                   CON     $EB
+SEND                   CON     $EA
+RECV                   CON     $E9
+CLOSE                  CON     $E8
+LISTEN                 CON     $E7
+ARG                    CON     $E6
+REPLY                  CON     $E5
+CONNECT                CON     $E4
+
+' Wi-Fi Module Binary value indicators
+
+INT8                   CON     $FD
+UINT8                  CON     $FC
+INT16                  CON     $FB
+UINT16                 CON     $FA
+INT32                  CON     $F9
+UINT32                 CON     $F8
+
+' Wi-Fi Module Parameter Tokens
+
+HTTP                   CON     $F7
+WS                     CON     $F6
+TCP                    CON     $F5
+STA                    CON     $F4
+AP                     CON     $F3
+STA_AP                 CON     $F2
+
+' Wi-Fi Module Network Codes
+No_Error               CON     0             ' No error
+Mem_Out                CON     -1            ' Out of memory error
+'<undefined>                   -2            ' Not defined
+Time_Out               CON     -3            ' Network_Timeout
+Routing_Problem        CON     -4
+Op_In_Porgress         CON     -5
+'<undefined>                   -6            ' Not defined
+Set_Max_Over           CON     -7            ' Total number exceeds set max
+Conn_Aborted           CON     -8            ' Connection aborted
+Conn_Reset             CON     -9            ' Connection reset
+Conn_Closed            CON     -10           ' Connection closed
+Conn_Not               CON     -11           ' Not connected
+Arg_Illegal            CON     -12           ' Illegal argument
+'<undefined>           -13
+Udp_Send_Error         CON     -14           ' UDP send error
+Conn_Already           CON     -15           ' Already connected
+'<undefined>           -16..-27
+Ssl_Hshake_fail        CON     -28           ' SSL handshake failed
+' <undefined>          -29..-60
+Ssl_App_Invalid        CON     -61           ' SSL application invalid
+
+' Wi-Fi Module Error codes
+INVALID_REQUEST        CON     1
+INVALID_ARGUMENT       CON     2
+WRONG_ARGUMENT_COUNT   CON     3
+NO_FREE_LISTENER       CON     4
+NO_FREE_CONNECTION     CON     5
+LOOKUP_FAILED          CON     6
+CONNECT_FAILED         CON     7
+SEND_FAILED            CON     8
+INVALID_STATE          CON     9
+INVALID_SIZE           CON     10
+DISCONNECTED           CON     11
+UNIMPLEMENTED          CON     12
+BUSY                   CON     13
+INTERNAL_ERROR         CON     14
+
+' Wi-Fi Module ' Variables
+eeAddr VAR Byte
+#IF PATHS = 1 #THEN uriPath VAR Byte(PathCharCount) #ENDIF
+#IF PATHS = 1 #THEN postArg VAR uriPath #ENDIF
+#IF PATHS = 1 AND GETS = 1 #THEN
+  replyText VAR uriPath
+#ENDIF
+
+#IF PATHS = 1 #THEN
+  idx VAR Byte
+  match VAR Bit
+#ENDIF
+
+op VAR Byte
+status VAR op
+char VAR op
+
+handle VAR Nib
+id VAR Nib
+
+charCount VAR Nib
+#IF WEBSOCKETS #THEN
+  wsWaitId VAR charCount
+#ENDIF
+
+opIdx VAR Nib
+
+' Wi-Fi Subroutines
+Break:
+  ' Send BREAK condition
+  HIGH ToDI : PAUSE 10
+  LOW ToDI  : PAUSE 10
+  HIGH ToDI : PAUSE 1
+  RETURN
+
+Listen_Setup:
+  status = 0
+  'idx = 0                                ' !! Just use eeAddr
+  DO
+    'READ eeAddr + idx, char
+    READ eeAddr, char
+    'DEBUG char
+    SEROUT toDI, Baud, [char]
+    'idx = idx + 1
+    eeAddr = eeAddr + 1
+  LOOP UNTIL char = CR
+  opIdx = 1
+  SERIN FromDO, Baud, msTimeout, Timeout, [WAIT(CMD, "="), status, SKIP(1), DEC id]
+  RetPt1:
+  #IF DEBUGS = 1 #THEN
+    DEBUG "status = ", status, ", id = ", DEC id, CR, CR
+  #ENDIF
+  RETURN
+
+Poll_Events:
+  #IF DEBUGS = 1 #THEN
+    DEBUG CMD, "POLL", CR
+  #ENDIF
+  SEROUT ToDI, Baud, [CMD, POLL, CR]
+  opIdx = 2
+  SERIN FromDO, Baud, msTimeout, Timeout,
+        [WAIT(CMD, "="), op, DEC handle, DEC id]
+  retPt2:
+  IF op = "E" THEN
+    GOSUB RetPt0
+  ELSEIF (NOT (op = "N" OR op = "S")) AND id = 0 THEN
+    GOSUB Client_Closed
+  ENDIF
+  #IF DEBUGS = 1 #THEN
+    DEBUG "op = ", op, ", handle = ", DEC handle, ", id = ", DEC id, CR
+  #ENDIF
+  RETURN
+
+#IF PATHS = 1 #THEN
+  Check_Path:
+    #IF DEBUGS = 1 #THEN
+      DEBUG CMD, "PATH:", DEC handle, CR
+    #ENDIF
+    SEROUT ToDI, Baud, [CMD, PATH, DEC handle, CR]
+    opIdx = 3
+    SERIN FromDO, Baud, msTimeout, Timeout,
+          [WAIT(CMD, "="), status, SKIP(1), STR uriPath\PathCharCount\CR]
+    retPt3:
+    #IF DEBUGS = 1 #THEN
+      DEBUG "status = ", status, ", uriPath = ", STR uriPath, CR
+    #ENDIF
+    RETURN
+#ENDIF
+
+
+#IF POSTS = 1 #THEN
+  Post_Request_Start:
+    #IF DEBUGS = 1 #THEN
+      DEBUG CMD, "ARG:", DEC handle, ","
+    #ENDIF
+    SEROUT ToDI, Baud, [CMD, ARG, DEC handle, ","]
+    ' Name of argument comes next.
+    DO
+      READ eeAddr, char
+      #IF DEBUGS = 1 #THEN
+        DEBUG char
+      #ENDIF
+      SEROUT toDI, Baud, [char]
+      eeAddr = eeAddr + 1
+    LOOP UNTIL char = CR
+    RETURN
+
+  Post_Request_Ack:
+    #IF DEBUGS = 1 #THEN
+      DEBUG CMD, "REPLY:", DEC handle, ",200,", "2", CR, "OK", CR
+    #ENDIF
+    SEROUT ToDI, Baud, [CMD, REPLY, DEC handle, ",200,", "2", CR, "OK"]
+    #IF PATHS = 1 #THEN
+      opIdx = 4
+      SERIN  FromDO, Baud, msTimeout, Timeout, [WAIT(CMD, "="), STR uriPath\PathCharCount\CR]
+      RetPt4:
+      #IF DEBUGS = 1 #THEN
+        DEBUG "uriPath = ", STR uriPath, CR
+      #ENDIF
+    #ELSE
+      opIdx = 4
+      ' Update this with status, ??
+      SERIN  FromDO, Baud, msTimeout, Timeout, [WAIT(CMD), WAIT(CR)]
+      RetPt4:
+      #IF DEBUGS = 1 AND PATHS = 1 #THEN
+        DEBUG "uriPath = ", STR uriPath, CR
+      #ENDIF
+    #ENDIF
+    RETURN
+#ENDIF
+
+#IF GETS = 1 #THEN
+  Get_Request_Start:
+    #IF DEBUGS = 1 #THEN
+      DEBUG CMD,"REPLY:", DEC handle, ",200,", DEC charCount, CR
+    #ENDIF
+    SEROUT ToDI, Baud, [CMD, REPLY, DEC handle, ",200,",
+                       DEC charCount, CR]
+    RETURN
+
+  Get_Request_Ack:
+    #IF PATHS = 1 #THEN
+      opIdx = 5
+      SERIN  FromDO, Baud, msTimeout, Timeout, [WAIT(CMD, "="), STR replyText\PathCharCount\CR]
+      RetPt5:
+      #IF DEBUGS = 1 #THEN
+        DEBUG "uriPath = ", STR uriPath, CR
+      #ENDIF
+    #ELSE
+      opIdx = 5
+      SERIN  FromDO, Baud, msTimeout, Timeout, [WAIT(CMD), WAIT(CR)]
+      RetPt5:
+        #IF DEBUGS = 1 AND PATHS = 1 #THEN
+          DEBUG "uriPath = ", STR uriPath, CR
+        #ENDIF
+    #ENDIF
+    RETURN
+#ENDIF
+
+#IF WEBSOCKETS = 1 #THEN
+  Wait_WebSocket_Connect:
+    DEBUG "Wating for WebSocket connection.", CR,
+          "To connect, open or re-load ", CR,
+          "[Wi-Fi module IP address]/files/", CR,
+          "ws-boe-bot-btns-ir-speed.html", CR
+    #IF DEBUGS = 1 #THEN
+      DEBUG "wsWaitId = ", DEC wsWaitId, CR
+      DEBUG "Waiting for page."
+    #ENDIF
+    DO
+      GOSUB Poll_Events
+      IF op = "W" AND id = wsWaitId THEN
+        #IF PATHS = 1 #THEN
+          GOSUB Check_Path
+          eeAddr = WsPath
+          IF status = "S" THEN
+            GOSUB Path_Compare
+            IF match = 1 THEN
+              RETURN
+              #IF DEBUGS = 1 #THEN
+                DEBUG "handle = ", DEC handle, CR
+              #ENDIF
+            ENDIF
+          ENDIF
+        #ELSE
+          #IF DEBUGS = 1 #THEN
+            DEBUG "wsHandle = ", DEC handle, CR
+          #ENDIF
+          DEBUG "WebSocket connected!", CR             ' Confirm WebSocket conneciton
+          RETURN
+        #ENDIF
+      ENDIF
+      'PAUSE 1000
+      #IF DEBUGS = 1 #THEN
+        DEBUG "."
+      #ENDIF
+    LOOP
+#ENDIF
+
+#IF PATHS = 1 #THEN
+Path_Compare:
+  char = 0
+  match = 0
+  idx = 0
+  DO
+    READ eeAddr + idx, char
+    IF char = CR THEN
+      EXIT
+    ENDIF
+    IF char <> uriPath(idx) THEN
+      #IF DEBUGS = 1 #THEN
+        DEBUG "match = ", DEC match, CR
+      #ENDIF
+      RETURN
+    ENDIF
+    idx = idx + 1
+  LOOP
+  match = 1
+  #IF DEBUGS = 1 #THEN
+    DEBUG "match = ", DEC match, CR
+  #ENDIF
+  RETURN
+#ENDIF
+
+Client_Closed:
+  #IF DEBUGS = 1 #THEN
+    DEBUG "Connection closed by client.", CR
+  #ENDIF
+    SEROUT ToDI, Baud, [CMD, CLOSE, DEC handle, CR]
+    opIdx = 6
+    SERIN FromDO, Baud, msTimeout, Timeout,
+          [WAIT(CMD, "="), status, DEC handle]
+    RetPt6:
+    IF status = "S" THEN
+      op = "N"
+      handle = 0
+      id = 0
+      #IF DEBUGS = 1 #THEN
+        DEBUG "Handle returned to pool.", CR, CR
+      #ENDIF
+    ELSEIF status = "E" THEN
+      #IF DEBUGS = 1 #THEN
+        DEBUG "Error, code: ", DEC handle, CR
+      #ELSE
+        DEBUG "Error, try DEBUGS", CR, CR
+        GOTO RetPt0
+      #ENDIF
+    ENDIF
+  RETURN
+
+Timeout:
+  DEBUG "Timeout opIdx = ", DEC opIdx, CR
+  ON opIdx GOTO RetPt0,
+                RetPt1,
+                RetPt2,
+                #IF PATHS = 1 #THEN RetPt3 #ELSE RetPt0 #ENDIF,
+                #IF POSTS = 1 #THEN RetPt4 #ELSE RetPt0 #ENDIF,
+                #IF GETS  = 1 #THEN RetPt5 #ELSE RetPt0 #ENDIF,
+                retPt6
+
+Warning:
+  DEBUG "Timeout in user code.", CR, CR
+
+RetPt0:
+  #IF DEBUGS <> 1 #THEN
+    DEBUG "ERROR, set DEBUGS to 1", CR
+  #ENDIF
+  DEBUG "op = ", op, " handle = ", DEC handle, "id = ", DEC id, CR,
+        "status = ", status, CR, CR
+  DEBUG "BS2 app waiting for reset...", CR, CR
+  DO:LOOP
