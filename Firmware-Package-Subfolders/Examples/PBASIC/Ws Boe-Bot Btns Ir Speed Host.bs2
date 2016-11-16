@@ -88,7 +88,9 @@ DO                                           ' Start of main loop
 
   GOSUB Servo_Pulse                          ' Apply a servo pulse
 
-  ' If data from page, receive
+  ' If data from page, receive.
+  ' Expected messages are F0 B0 R0 L0 or v# where # is a
+  ' velocity value in the 0 to 100 range.
   IF op = "D" THEN
     SEROUT ToDI, Baud, [CMD, RECV, DEC wsHandle, ",128", CR]
     GOSUB Servo_Pulse
@@ -99,6 +101,7 @@ DO                                           ' Start of main loop
       DEBUG "status = ", status, " id = ", DEC id, CR
       DEBUG "navChar = ", navChar, " val = ", DEC3 val, CR
     #ENDIF
+    DEBUG navChar, DEC val, CR
     GOSUB Servo_Pulse                        ' Next servo pulse
   ENDIF
 

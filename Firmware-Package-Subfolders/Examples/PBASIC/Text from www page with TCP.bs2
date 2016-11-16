@@ -3,6 +3,14 @@
 ' This program establishes a TCP conneciton with a server and retrieves
 ' the contents of a web page.
 '
+' IMPORTANT:
+'  o Go to http://wi-fi-module-ip-address/settings.html.
+'  o Make a note of the current Pause Time and Pause After settings.
+'  o Set Command Pause Time in ms to 4.
+'  o Set Command Pause after Characters to =,.
+'  o Click the Save button, and optionally the Save to Flash button.
+'  o Restore to previous settings before trying other programs.
+
 ' Setup:
 '   - Go to http://learn.parallax.com/pbasic-wx-wi-fi.html.
 '   - If you have not already done so, find the Get Started with PBASIC

@@ -14,14 +14,14 @@
   
     <H2>Pushbutton States</H2> 
     
-    <p>P5: <input type="radio" id="P5"></p>
     <p>P3: <input type="radio" id="P3"></p>
+    <p>P1: <input type="radio" id="P1"></p>
 
     <p id="value">Waiting...</p>
 
     <script>
 
-      var myTimer = setInterval(getFromMcu, 3000);
+      var myTimer = setInterval(getFromMcu, 2000);
 
       function useMcuReply(response)
       {
@@ -29,13 +29,13 @@
         val.innerHTML = "Value: " + response;
 
         if(response.charAt(0) == "1")
-          P5.checked = true;
-        else
-          P5.checked = false;
-        if(response.charAt(1) == "1")
           P3.checked = true;
         else
           P3.checked = false;
+        if(response.charAt(1) == "1")
+          P1.checked = true;
+        else
+          P1.checked = false;
       }
 
       function getFromMcu()

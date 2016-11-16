@@ -23,7 +23,7 @@
 #DEFINE GETS         =  1                    ' HTTP GET requests
 #DEFINE WEBSOCKETS   =  0                    ' WebSockets
 #DEFINE PATHS        =  0                    ' Path text comparisons
-#DEFINE DEBUGS       =  1                    ' Debug Terminal Info
+#DEFINE DEBUGS       =  0                    ' Debug Terminal Info
 
 ToDI           CON     2                     ' BS2 P2 -> Wi-Fi DI
 FromDO         CON     4                     ' BS2 P4 <- Wi-Fi DO
@@ -60,9 +60,9 @@ DO                                           ' Main loop
     IF id = getsId THEN                      ' If listener ID matches
       charCount = 2
       GOSUB Get_Request_Start
-      SEROUT ToDI, Baud, [BIN1 IN5, BIN1 IN3]
+      SEROUT ToDI, Baud, [BIN1 IN3, BIN1 IN1]
       GOSUB Get_Request_Ack
-      DEBUG "Sent ", BIN1 IN5, BIN1 IN3, CR  ' Display text
+      DEBUG "Sent ", BIN1 IN3, BIN1 IN1, CR  ' Display text
     ENDIF
   ENDIF
 

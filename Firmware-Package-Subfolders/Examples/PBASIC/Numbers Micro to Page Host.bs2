@@ -25,7 +25,7 @@
 #DEFINE GETS         =  1                    ' HTTP GET requests
 #DEFINE WEBSOCKETS   =  0                    ' WebSockets
 #DEFINE PATHS        =  0                    ' Path text comparisons
-#DEFINE DEBUGS       =  1                    ' Debug Terminal Info
+#DEFINE DEBUGS       =  0                    ' Debug Terminal Info
 
 ToDI           CON     2                     ' BS2 P11 -> Wi-Fi DI
 FromDO         CON     4                     ' BS2 P10 <- Wi-Fi DO
