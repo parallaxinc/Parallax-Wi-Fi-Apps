@@ -1,4 +1,4 @@
-Test Join Leave.c
+Switch to STA + AP mode.c
 >compiler=C
 >memtype=cmm main ram compact
 >optimize=-Os
