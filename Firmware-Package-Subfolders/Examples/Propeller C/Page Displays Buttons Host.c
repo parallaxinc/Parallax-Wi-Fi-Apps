@@ -25,9 +25,6 @@ int buttonP3, buttonP4;
 
 int main()
 {
-  low(8);
-  pause(2000);
-  high(8);
   wifi_start(31, 30, 115200, WX_ALL_COM);
 
   buttonId = wifi_listen(HTTP, "/btns");
@@ -43,8 +40,8 @@ int main()
       {
         buttonP4 = input(4);
         buttonP3 = input(3);
-        wifi_print(GET, handle, "%d%d\r", buttonP3, buttonP4);
-        print("Incoming GET request, sending %d%d\r", buttonP3, buttonP4);
+        wifi_print(GET, handle, "%d%d\r", buttonP4, buttonP3);
+        print("Incoming GET request, sending %d%d\r", buttonP4, buttonP3);
       }        
     }
     pause(500);

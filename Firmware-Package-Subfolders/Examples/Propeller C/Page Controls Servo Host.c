@@ -29,9 +29,6 @@ int main()
   servoId = wifi_listen(HTTP, "/servo");
   print("ledId = %d\n", servoId);
   
-  set_direction(26, 1);
-  set_direction(27, 1);
-
   while(1)
   {
     wifi_poll(&event, &id, &handle); 
